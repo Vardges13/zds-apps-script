@@ -1,7 +1,12 @@
 const API_KEY=***
 const SHEETS={employees:'zp_employees',daily:'zp_daily',advances:'zp_advances',schedule:'zp_schedule',settings:'zp_settings'};
 
-function checkKey(e){return(e.parameter.key||'')===API_KEY}
+function checkKey(e){
+var k=(e.parameter.key||'');
+if(k===API_KEY)return true;
+if(e.queryString && e.queryString.indexOf('key='+API_KEY)>=0)return true;
+return false;
+}
 
 function getOrCreateSheet(name){
 var ss=SpreadsheetApp.getActiveSpreadsheet();
@@ -159,8 +164,4 @@ return jr('ok',{written:t});
 }
 return jr('error',null,'Неизвестное: '+a);
 }catch(x){return jr('error',null,'Ошибка: '+x.message)}
-}
-
-function doPut(e){
-return doPost(e);
 }

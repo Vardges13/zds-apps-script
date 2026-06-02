@@ -1,12 +1,15 @@
 const API_KEY=***
 const SHEETS={employees:'zp_employees',daily:'zp_daily',advances:'zp_advances',schedule:'zp_schedule',settings:'zp_settings'};
 
-function checkKey(e){
+function getKey(e){
 var k=(e.parameter.key||'');
-if(k===API_KEY)return true;
-if(e.queryString && e.queryString.indexOf('key='+API_KEY)>=0)return true;
-return false;
+if(k)return k;
+try{var b=JSON.parse(e.postData.contents);if(b&&b._key)return b._key}catch(x){}
+try{var qs=e.queryString||'';var m=qs.match(/key=([^&]+)/);if(m)return m[1]}catch(x){}
+return'';
 }
+
+function checkKey(e){return getKey(e)===API_KEY}
 
 function getOrCreateSheet(name){
 var ss=SpreadsheetApp.getActiveSpreadsheet();
@@ -136,30 +139,26 @@ try{
 if(!checkKey(e))return jr('error',null,'Неверный ключ');
 var a=e.parameter.action||'';
 var b=pb(e);
-if(!b||!b.data)return jr('error',null,'Нет данных');
+if(!b)return jr('error',null,'Нет данных');
 var rep=(b.replace===true);
-if(a==='write_employees'){if(rep)writeSheet(SHEETS.employees,b.data);else upsertSheet(SHEETS.employees,b.data);return jr('ok',{written:b.data.length})}
-if(a==='write_daily'){if(rep)writeSheet(SHEETS.daily,b.data);else upsertSheet(SHEETS.daily,b.data);return jr('ok',{written:b.data.length})}
-if(a==='write_advances'){if(rep)writeSheet(SHEETS.advances,b.data);else upsertSheet(SHEETS.advances,b.data);return jr('ok',{written:b.data.length})}
-if(a==='write_schedule'){if(rep)writeSheet(SHEETS.schedule,b.data);else upsertSheet(SHEETS.schedule,b.data);return jr('ok',{written:b.data.length})}
+var d=b.data;
+if(a==='write_employees'){if(rep)writeSheet(SHEETS.employees,d);else upsertSheet(SHEETS.employees,d);return jr('ok',{written:d.length})}
+if(a==='write_daily'){if(rep)writeSheet(SHEETS.daily,d);else upsertSheet(SHEETS.daily,d);return jr('ok',{written:d.length})}
+if(a==='write_advances'){if(rep)writeSheet(SHEETS.advances,d);else upsertSheet(SHEETS.advances,d);return jr('ok',{written:d.length})}
+if(a==='write_schedule'){if(rep)writeSheet(SHEETS.schedule,d);else upsertSheet(SHEETS.schedule,d);return jr('ok',{written:d.length})}
 if(a==='write_settings'){
 var rows=[];
-if(Array.isArray(b.data))rows=b.data;
-else{var keys=Object.keys(b.data);for(var i=0;i<keys.length;i++)rows.push({key:keys[i],value:String(b.data[keys[i]])})}
+if(Array.isArray(d))rows=d;
+else{var keys=Object.keys(d);for(var i=0;i<keys.length;i++)rows.push({key:keys[i],value:String(d[keys[i]])})}
 if(rep)writeSheet(SHEETS.settings,rows);else upsertSheet(SHEETS.settings,rows);
 return jr('ok',{written:rows.length});
 }
 if(a==='bulk_write'){
-var d=b.data;
 if(d.employees)writeSheet(SHEETS.employees,d.employees);
 if(d.daily)writeSheet(SHEETS.daily,d.daily);
 if(d.advances)writeSheet(SHEETS.advances,d.advances);
 if(d.schedule)writeSheet(SHEETS.schedule,d.schedule);
-var t=0;
-if(d.employees)t+=d.employees.length;
-if(d.daily)t+=d.daily.length;
-if(d.advances)t+=d.advances.length;
-if(d.schedule)t+=d.schedule.length;
+var t=0;if(d.employees)t+=d.employees.length;if(d.daily)t+=d.daily.length;if(d.advances)t+=d.advances.length;if(d.schedule)t+=d.schedule.length;
 return jr('ok',{written:t});
 }
 return jr('error',null,'Неизвестное: '+a);

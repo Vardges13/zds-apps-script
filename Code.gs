@@ -160,3 +160,7 @@ return jr('ok',{written:t});
 return jr('error',null,'Неизвестное: '+a);
 }catch(x){return jr('error',null,'Ошибка: '+x.message)}
 }
+
+function doPut(e){
+return doPost(e);
+}

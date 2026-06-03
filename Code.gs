@@ -1,4 +1,4 @@
-const API_KEY=***
+const API_KEY='zk2026';
 const SHEETS={employees:'zp_employees',daily:'zp_daily',advances:'zp_advances',schedule:'zp_schedule',settings:'zp_settings'};
 
 function checkKey(e){return(e.parameter.key||'')===API_KEY}
@@ -93,13 +93,16 @@ function pb(e){
 try{return JSON.parse(e.postData.contents)}catch(x){return null}
 }
 
+// GET — только чтение (пинг работает без ключа)
 function doGet(e){
 try{
+// ping без ключа
+if(e.parameter.action==='ping')return jr('ok',{pong:true,version:'2.0',timestamp:new Date().toISOString()});
+
+// Всё остальное требует ключ
 if(!checkKey(e))return jr('error',null,'Неверный ключ');
 var a=e.parameter.action||'';
 
-// READ операции
-if(a==='ping')return jr('ok',{pong:true});
 if(a==='read_employees')return jr('ok',readSheet(SHEETS.employees));
 if(a==='read_daily'){
 var d=readSheet(SHEETS.daily);
@@ -125,42 +128,20 @@ return jr('ok',o);
 }
 if(a==='read_all')return jr('ok',{employees:readSheet(SHEETS.employees),daily:readSheet(SHEETS.daily),advances:readSheet(SHEETS.advances),schedule:readSheet(SHEETS.schedule)});
 
-// WRITE операции через GET (data как JSON строка в параметре)
-if(a==='write_daily'||a==='write_employees'||a==='write_advances'||a==='write_schedule'||a==='write_settings'){
-var sheetName=a.replace('write_','zp_');
-var dataStr=e.parameter.data||'';
-var rep=(e.parameter.replace==='true');
-try{var data=JSON.parse(dataStr)}catch(x){return jr('error',null,'Неверный JSON')}
-if(!data||!data.length)return jr('error',null,'Нет данных');
-if(rep)writeSheet(sheetName,data);else upsertSheet(sheetName,data);
-return jr('ok',{written:data.length});
-}
-
-// Булковая запись через GET
-if(a==='bulk_write'){
-var dataStr=e.parameter.data||'';
-try{var d=JSON.parse(dataStr)}catch(x){return jr('error',null,'Неверный JSON')}
-if(d.employees)writeSheet(SHEETS.employees,d.employees);
-if(d.daily)writeSheet(SHEETS.daily,d.daily);
-if(d.advances)writeSheet(SHEETS.advances,d.advances);
-if(d.schedule)writeSheet(SHEETS.schedule,d.schedule);
-var t=0;if(d.employees)t+=d.employees.length;if(d.daily)t+=d.daily.length;if(d.advances)t+=d.advances.length;if(d.schedule)t+=d.schedule.length;
-return jr('ok',{written:t});
-}
-
 return jr('error',null,'Неизвестное: '+a);
 }catch(x){return jr('error',null,'Ошибка: '+x.message)}
 }
 
+// POST — только запись (тело запроса — JSON {data, replace})
 function doPost(e){
 try{
 if(!checkKey(e))return jr('error',null,'Неверный ключ');
 var a=e.parameter.action||'';
 var b=pb(e);
-if(!b)return jr('error',null,'Нет данных');
+if(!b||!b.data)return jr('error',null,'Нет данных в теле запроса');
 var rep=(b.replace===true);
 var d=b.data;
-if(!d)return jr('error',null,'Нет данных');
+
 if(a==='write_employees'){if(rep)writeSheet(SHEETS.employees,d);else upsertSheet(SHEETS.employees,d);return jr('ok',{written:d.length})}
 if(a==='write_daily'){if(rep)writeSheet(SHEETS.daily,d);else upsertSheet(SHEETS.daily,d);return jr('ok',{written:d.length})}
 if(a==='write_advances'){if(rep)writeSheet(SHEETS.advances,d);else upsertSheet(SHEETS.advances,d);return jr('ok',{written:d.length})}
